@@ -1,0 +1,55 @@
+# MediaWiki with MariaDB
+#
+# Access via "http://localhost:8080"
+#   (or "http://$(docker-machine ip):8080" if using docker-machine)
+version: '3'
+services:
+  mediawiki:
+    image: mediawiki:1.42
+    container_name: mediawiki
+    restart: always
+    ports:
+      - 10007:80
+    links:
+      - database
+    volumes:
+      - ./images:/var/www/html/images
+      - ./skins:/var/www/mediawiki/skins
+      - ./extensions:/var/www/mediawiki/extensions
+      - ./util:/var/www/html/util
+      # After initial setup, download LocalSettings.php to the same directory as
+      # this yaml and uncomment the following line and use compose to restart
+      # the mediawiki service
+      - ./LocalSettings.php:/var/www/html/LocalSettings.php
+  # This key also defines the name of the database host used during setup instead of the default "localhost"
+  database:
+    image: mariadb:10.7
+    container_name: mediawiki_db
+    restart: always
+    environment:
+      # @see https://phabricator.wikimedia.org/source/mediawiki/browse/master/includes/DefaultSettings.php
+      MYSQL_DATABASE: my_wiki
+      MYSQL_USER: wikiuser
+      MYSQL_PASSWORD: example
+      MYSQL_RANDOM_ROOT_PASSWORD: 'yes'
+    volumes:
+      - ./db:/var/lib/mysql
+    ports:
+      - 3310:3306
+  
+  # Parsoid adalah service yang dibutuhkan oleh VisualEditor untuk parsing konten. 
+  parsoid:
+    image: thenets/parsoid:0.11
+    container_name: mediawiki_parsoid
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PARSOID_DOMAIN_localhost=http://mediawiki:80
+    depends_on:
+      - mediawiki
+
+    
+volumes:
+  images:
+  db:
